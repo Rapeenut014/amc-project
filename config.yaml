@@ -1,0 +1,56 @@
+# =========================================
+# AMC Project Configuration
+# Automatic Modulation Classification
+# =========================================
+
+# Data Settings
+data:
+  dataset_path: "archive/GOLD_XYZ_OSC.0001_1024.hdf5"
+  classes_path: "archive/classes-fixed.json"
+  test_size: 0.2
+  val_size: 0.1
+  normalize: true
+  random_state: 42
+
+# Model Settings
+model:
+  architecture: "cnn"  # Options: "cnn", "resnet"
+  input_shape: [1024, 2]
+  num_classes: 24
+  dropout_rate: 0.5
+
+# Training Settings
+training:
+  epochs: 50
+  batch_size: 256
+  learning_rate: 0.001
+  early_stopping_patience: 10
+  reduce_lr_patience: 5
+  reduce_lr_factor: 0.5
+  min_lr: 0.000001
+  mixed_precision: false  # Set true for GPU with Tensor Cores (RTX 20xx+)
+
+# Paths
+paths:
+  models_dir: "models"
+  logs_dir: "logs"
+  results_dir: "results"
+  tensorboard_dir: "logs/tensorboard"
+
+# Evaluation Settings
+evaluation:
+  generate_confusion_matrix: true
+  generate_snr_analysis: true
+  save_predictions: true
+
+# Dashboard Settings
+dashboard:
+  title: "AMC Dashboard"
+  theme: "dark"
+  port: 8501
+
+# Logging Settings
+logging:
+  level: "INFO"  # Options: DEBUG, INFO, WARNING, ERROR
+  log_to_file: true
+  log_file: "logs/amc.log"

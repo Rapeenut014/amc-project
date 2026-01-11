@@ -1,0 +1,53 @@
+# Git
+.git
+.gitignore
+
+# Python
+__pycache__
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.env
+*.egg-info/
+.eggs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Large files (download separately)
+archive/*.hdf5
+archive/*.h5
+
+# Logs and outputs
+logs/
+*.log
+
+# Models (mount as volume)
+models/*.keras
+models/*.h5
+
+# Results (mount as volume)
+results/
+
+# Tests
+tests/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+*.md
+!README.md
+docs/
+
+# Misc
+.DS_Store
+Thumbs.db
+*.tmp

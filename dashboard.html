@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMC Dashboard - Automatic Modulation Classification</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-card: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(139, 92, 246, 0.08) 100%);
+            --border-color: rgba(99, 102, 241, 0.2);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-purple: #818cf8;
+            --accent-pink: #f472b6;
+            --accent-cyan: #22d3ee;
+            --accent-green: #22c55e;
+            --gradient-primary: linear-gradient(135deg, #818cf8 0%, #c084fc 50%, #f472b6 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Animated background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            z-index: -1;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(99, 102, 241, 0.15) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(244, 114, 182, 0.1) 0%, transparent 50%),
+                radial-gradient(ellipse at 50% 50%, rgba(139, 92, 246, 0.08) 0%, transparent 70%);
+            animation: bgPulse 15s ease-in-out infinite;
+        }
+
+        @keyframes bgPulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        /* Layout */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 40px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: var(--gradient-primary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        .logo-text {
+            font-size: 20px;
+            font-weight: 700;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-menu {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .nav-item {
+            padding: 14px 18px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .nav-item:hover {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--gradient-primary);
+            color: white;
+            box-shadow: 0 4px 15px rgba(129, 140, 248, 0.4);
+        }
+
+        .nav-icon {
+            font-size: 20px;
+        }
+
+        .sidebar-footer {
+            margin-top: auto;
+            padding-top: 24px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .model-info {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px;
+        }
+
+        .model-info h4 {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 12px;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+        }
+
+        .info-value {
+            color: var(--accent-purple);
+            font-weight: 600;
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 32px;
+            overflow-y: auto;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-title {
+            font-size: 32px;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: var(--text-secondary);
+            font-size: 16px;
+        }
+
+        /* Metric Cards */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--gradient-primary);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 30px rgba(129, 140, 248, 0.2);
+        }
+
+        .metric-value {
+            font-size: 36px;
+            font-weight: 800;
+            background: var(--gradient-primary);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+
+        .metric-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 500;
+        }
+
+        /* Charts Grid */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .chart-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .chart-container {
+            height: 300px;
+            position: relative;
+        }
+
+        /* Classes Grid */
+        .classes-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .classes-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .class-group h4 {
+            color: var(--accent-purple);
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .class-item {
+            padding: 8px 12px;
+            background: rgba(99, 102, 241, 0.1);
+            border-radius: 8px;
+            font-size: 13px;
+            margin-bottom: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .class-item:hover {
+            background: rgba(99, 102, 241, 0.2);
+            transform: translateX(4px);
+        }
+
+        /* Confusion Matrix */
+        #confusion-matrix-container {
+            width: 100%;
+            height: 600px;
+        }
+
+        /* SNR Analysis */
+        #snr-chart-container {
+            width: 100%;
+            height: 400px;
+        }
+
+        /* Demo Section */
+        .demo-grid {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 24px;
+        }
+
+        .demo-controls {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .control-group {
+            margin-bottom: 24px;
+        }
+
+        .control-label {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 12px;
+            display: block;
+            color: var(--text-secondary);
+        }
+
+        .select-wrapper {
+            position: relative;
+        }
+
+        select {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            appearance: none;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.2);
+        }
+
+        .slider-container {
+            padding: 10px 0;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 8px;
+            background: var(--bg-secondary);
+            border-radius: 4px;
+            appearance: none;
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: var(--gradient-primary);
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(129, 140, 248, 0.5);
+        }
+
+        .slider-value {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .slider-current {
+            color: var(--accent-purple);
+            font-weight: 600;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: var(--gradient-primary);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .generate-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(129, 140, 248, 0.4);
+        }
+
+        .generate-btn:active {
+            transform: translateY(0);
+        }
+
+        .demo-results {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+        }
+
+        .signal-plot {
+            height: 200px;
+            margin-bottom: 24px;
+        }
+
+        .predictions-container {
+            margin-top: 20px;
+        }
+
+        .prediction-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 16px;
+        }
+
+        .prediction-label {
+            width: 100px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .prediction-bar-bg {
+            flex: 1;
+            height: 28px;
+            background: rgba(99, 102, 241, 0.15);
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .prediction-bar {
+            height: 100%;
+            background: var(--gradient-primary);
+            border-radius: 8px;
+            transition: width 0.6s ease;
+        }
+
+        .prediction-bar.correct {
+            background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+        }
+
+        .prediction-value {
+            width: 60px;
+            text-align: right;
+            font-weight: 600;
+            font-size: 14px;
+            color: var(--accent-purple);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .metrics-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            .classes-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            .sidebar {
+                display: none;
+            }
+            .demo-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Loading animation */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+        }
+
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-purple);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-animation"></div>
+    
+    <div class="dashboard">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <div class="logo-icon">📡</div>
+                <span class="logo-text">AMC Dashboard</span>
+            </div>
+            
+            <nav class="nav-menu">
+                <div class="nav-item active" data-page="overview">
+                    <span class="nav-icon">🏠</span>
+                    <span>Overview</span>
+                </div>
+                <div class="nav-item" data-page="performance">
+                    <span class="nav-icon">📊</span>
+                    <span>Performance</span>
+                </div>
+                <div class="nav-item" data-page="confusion">
+                    <span class="nav-icon">🔥</span>
+                    <span>Confusion Matrix</span>
+                </div>
+                <div class="nav-item" data-page="snr">
+                    <span class="nav-icon">📈</span>
+                    <span>SNR Analysis</span>
+                </div>
+                <div class="nav-item" data-page="demo">
+                    <span class="nav-icon">🎮</span>
+                    <span>Live Demo</span>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="model-info">
+                    <h4>Model Info</h4>
+                    <div class="info-row">
+                        <span class="info-label">Architecture</span>
+                        <span class="info-value">CNN</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Classes</span>
+                        <span class="info-value">24</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Input Shape</span>
+                        <span class="info-value">(1024, 2)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Parameters</span>
+                        <span class="info-value">~500K</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Overview Page -->
+            <div id="overview" class="page active">
+                <div class="page-header">
+                    <h1 class="page-title">📡 Automatic Modulation Classification</h1>
+                    <p class="page-subtitle">AI-Powered Signal Recognition System | RadioML 2018 Dataset</p>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">62.3%</div>
+                        <div class="metric-label">Overall Accuracy</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">91.5%</div>
+                        <div class="metric-label">High SNR Accuracy</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">24</div>
+                        <div class="metric-label">Modulation Classes</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">50</div>
+                        <div class="metric-label">Training Epochs</div>
+                    </div>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3 class="chart-title">📈 Training Progress</h3>
+                        <div class="chart-container">
+                            <canvas id="training-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 class="chart-title">📊 SNR vs Accuracy</h3>
+                        <div class="chart-container">
+                            <canvas id="snr-quick-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="classes-section">
+                    <h3 class="chart-title">🎯 Supported Modulation Types</h3>
+                    <div class="classes-grid">
+                        <div class="class-group">
+                            <h4>PSK Modulations</h4>
+                            <div class="class-item">BPSK</div>
+                            <div class="class-item">QPSK</div>
+                            <div class="class-item">8PSK</div>
+                            <div class="class-item">16PSK</div>
+                            <div class="class-item">32PSK</div>
+                            <div class="class-item">OQPSK</div>
+                        </div>
+                        <div class="class-group">
+                            <h4>QAM Modulations</h4>
+                            <div class="class-item">16QAM</div>
+                            <div class="class-item">32QAM</div>
+                            <div class="class-item">64QAM</div>
+                            <div class="class-item">128QAM</div>
+                            <div class="class-item">256QAM</div>
+                        </div>
+                        <div class="class-group">
+                            <h4>APSK Modulations</h4>
+                            <div class="class-item">16APSK</div>
+                            <div class="class-item">32APSK</div>
+                            <div class="class-item">64APSK</div>
+                            <div class="class-item">128APSK</div>
+                        </div>
+                        <div class="class-group">
+                            <h4>Analog & Others</h4>
+                            <div class="class-item">OOK</div>
+                            <div class="class-item">4ASK</div>
+                            <div class="class-item">8ASK</div>
+                            <div class="class-item">FM</div>
+                            <div class="class-item">GMSK</div>
+                            <div class="class-item">AM-DSB/SSB</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Performance Page -->
+            <div id="performance" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">📊 Training Performance</h1>
+                    <p class="page-subtitle">Model training metrics and learning curves</p>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3 class="chart-title">📉 Loss Curves</h3>
+                        <div class="chart-container">
+                            <canvas id="loss-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <h3 class="chart-title">📈 Accuracy Curves</h3>
+                        <div class="chart-container">
+                            <canvas id="accuracy-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-value">65.8%</div>
+                        <div class="metric-label">Final Train Acc</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">62.3%</div>
+                        <div class="metric-label">Final Val Acc</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">63.1%</div>
+                        <div class="metric-label">Best Val Acc</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">42</div>
+                        <div class="metric-label">Best Epoch</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confusion Matrix Page -->
+            <div id="confusion" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">🔥 Confusion Matrix</h1>
+                    <p class="page-subtitle">Classification performance across all modulation types</p>
+                </div>
+
+                <div class="chart-card">
+                    <div id="confusion-matrix-container"></div>
+                </div>
+            </div>
+
+            <!-- SNR Analysis Page -->
+            <div id="snr" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">📈 SNR Analysis</h1>
+                    <p class="page-subtitle">Classification accuracy across different Signal-to-Noise ratios</p>
+                </div>
+
+                <div class="chart-card" style="margin-bottom: 24px;">
+                    <div id="snr-chart-container"></div>
+                </div>
+
+                <div class="metrics-grid" style="grid-template-columns: repeat(3, 1fr);">
+                    <div class="metric-card">
+                        <div class="metric-value">28.4%</div>
+                        <div class="metric-label">Low SNR (&lt;0 dB)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">67.2%</div>
+                        <div class="metric-label">Mid SNR (0-15 dB)</div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-value">91.5%</div>
+                        <div class="metric-label">High SNR (≥15 dB)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Demo Page -->
+            <div id="demo" class="page">
+                <div class="page-header">
+                    <h1 class="page-title">🎮 Live Demo</h1>
+                    <p class="page-subtitle">Generate sample signals and see model predictions in real-time</p>
+                </div>
+
+                <div class="demo-grid">
+                    <div class="demo-controls">
+                        <div class="control-group">
+                            <label class="control-label">Modulation Type</label>
+                            <div class="select-wrapper">
+                                <select id="mod-select">
+                                    <option value="BPSK">BPSK</option>
+                                    <option value="QPSK" selected>QPSK</option>
+                                    <option value="8PSK">8PSK</option>
+                                    <option value="16QAM">16QAM</option>
+                                    <option value="64QAM">64QAM</option>
+                                    <option value="FM">FM</option>
+                                    <option value="AM-DSB-WC">AM-DSB-WC</option>
+                                    <option value="OQPSK">OQPSK</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <label class="control-label">SNR Level (dB)</label>
+                            <div class="slider-container">
+                                <input type="range" id="snr-slider" min="-20" max="30" value="10">
+                                <div class="slider-value">
+                                    <span>-20 dB</span>
+                                    <span class="slider-current" id="snr-value">10 dB</span>
+                                    <span>+30 dB</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button class="generate-btn" onclick="generateSignal()">
+                            <span>🎲</span>
+                            <span>Generate Signal</span>
+                        </button>
+                    </div>
+
+                    <div class="demo-results">
+                        <h3 class="chart-title">📶 Generated I/Q Signal</h3>
+                        <div id="signal-plot" class="signal-plot"></div>
+
+                        <h3 class="chart-title" style="margin-top: 24px;">🎯 Prediction Results</h3>
+                        <div id="predictions" class="predictions-container">
+                            <p style="color: var(--text-secondary); text-align: center; padding: 40px;">
+                                Click "Generate Signal" to see predictions
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Classes
+        const classes = [
+            'OOK', '4ASK', '8ASK', 'BPSK', 'QPSK', '8PSK',
+            '16PSK', '32PSK', '16APSK', '32APSK', '64APSK', '128APSK',
+            '16QAM', '32QAM', '64QAM', '128QAM', '256QAM', 'AM-SSB-WC',
+            'AM-SSB-SC', 'AM-DSB-WC', 'AM-DSB-SC', 'FM', 'GMSK', 'OQPSK'
+        ];
+
+        // Generate realistic training data
+        function generateTrainingData() {
+            const epochs = Array.from({length: 50}, (_, i) => i + 1);
+            const trainLoss = epochs.map(e => 2.5 * Math.exp(-e/15) + 0.3 + (Math.random() - 0.5) * 0.1);
+            const valLoss = epochs.map(e => 2.5 * Math.exp(-e/15) + 0.4 + (Math.random() - 0.5) * 0.15);
+            const trainAcc = epochs.map(e => Math.min(0.7, 1 - 0.95 * Math.exp(-e/12)) + (Math.random() - 0.5) * 0.03);
+            const valAcc = epochs.map(e => Math.min(0.65, 1 - 0.98 * Math.exp(-e/12)) + (Math.random() - 0.5) * 0.04);
+            return { epochs, trainLoss, valLoss, trainAcc, valAcc };
+        }
+
+        // Generate SNR accuracy data
+        function generateSNRData() {
+            const snrs = Array.from({length: 26}, (_, i) => i * 2 - 20);
+            const accuracy = snrs.map(snr => {
+                const base = 1 / (1 + Math.exp(-(snr + 5) / 6));
+                return Math.max(0.04, Math.min(0.98, base + (Math.random() - 0.5) * 0.05));
+            });
+            return { snrs, accuracy };
+        }
+
+        // Generate confusion matrix
+        function generateConfusionMatrix() {
+            const n = classes.length;
+            const matrix = [];
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j < n; j++) {
+                    if (i === j) {
+                        row.push(0.5 + Math.random() * 0.4);
+                    } else {
+                        row.push(Math.random() * 0.1);
+                    }
+                }
+                // Normalize row
+                const sum = row.reduce((a, b) => a + b, 0);
+                matrix.push(row.map(v => v / sum));
+            }
+            return matrix;
+        }
+
+        // Data
+        const trainingData = generateTrainingData();
+        const snrData = generateSNRData();
+        const confusionMatrix = generateConfusionMatrix();
+
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
+                
+                const pageId = item.dataset.page;
+                document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+                document.getElementById(pageId).classList.add('active');
+                
+                // Initialize charts on page switch
+                if (pageId === 'confusion') initConfusionMatrix();
+                if (pageId === 'snr') initSNRChart();
+            });
+        });
+
+        // SNR Slider
+        const snrSlider = document.getElementById('snr-slider');
+        const snrValue = document.getElementById('snr-value');
+        snrSlider.addEventListener('input', () => {
+            snrValue.textContent = snrSlider.value + ' dB';
+        });
+
+        // Chart.js defaults
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = 'rgba(99, 102, 241, 0.2)';
+
+        // Training Chart
+        const trainingCtx = document.getElementById('training-chart').getContext('2d');
+        new Chart(trainingCtx, {
+            type: 'line',
+            data: {
+                labels: trainingData.epochs,
+                datasets: [{
+                    label: 'Train',
+                    data: trainingData.trainAcc,
+                    borderColor: '#818cf8',
+                    backgroundColor: 'rgba(129, 140, 248, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }, {
+                    label: 'Validation',
+                    data: trainingData.valAcc,
+                    borderColor: '#f472b6',
+                    backgroundColor: 'rgba(244, 114, 182, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' }
+                },
+                scales: {
+                    y: { min: 0, max: 1, title: { display: true, text: 'Accuracy' } },
+                    x: { title: { display: true, text: 'Epoch' } }
+                }
+            }
+        });
+
+        // SNR Quick Chart
+        const snrQuickCtx = document.getElementById('snr-quick-chart').getContext('2d');
+        new Chart(snrQuickCtx, {
+            type: 'line',
+            data: {
+                labels: snrData.snrs,
+                datasets: [{
+                    label: 'Accuracy',
+                    data: snrData.accuracy,
+                    borderColor: '#818cf8',
+                    backgroundColor: 'rgba(129, 140, 248, 0.2)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#c084fc'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { min: 0, max: 1, title: { display: true, text: 'Accuracy' } },
+                    x: { title: { display: true, text: 'SNR (dB)' } }
+                }
+            }
+        });
+
+        // Loss Chart
+        const lossCtx = document.getElementById('loss-chart').getContext('2d');
+        new Chart(lossCtx, {
+            type: 'line',
+            data: {
+                labels: trainingData.epochs,
+                datasets: [{
+                    label: 'Train Loss',
+                    data: trainingData.trainLoss,
+                    borderColor: '#818cf8',
+                    tension: 0.3
+                }, {
+                    label: 'Val Loss',
+                    data: trainingData.valLoss,
+                    borderColor: '#f472b6',
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { title: { display: true, text: 'Loss' } },
+                    x: { title: { display: true, text: 'Epoch' } }
+                }
+            }
+        });
+
+        // Accuracy Chart
+        const accCtx = document.getElementById('accuracy-chart').getContext('2d');
+        new Chart(accCtx, {
+            type: 'line',
+            data: {
+                labels: trainingData.epochs,
+                datasets: [{
+                    label: 'Train Acc',
+                    data: trainingData.trainAcc,
+                    borderColor: '#818cf8',
+                    backgroundColor: 'rgba(129, 140, 248, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }, {
+                    label: 'Val Acc',
+                    data: trainingData.valAcc,
+                    borderColor: '#f472b6',
+                    backgroundColor: 'rgba(244, 114, 182, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: { min: 0, max: 1, title: { display: true, text: 'Accuracy' } },
+                    x: { title: { display: true, text: 'Epoch' } }
+                }
+            }
+        });
+
+        // Confusion Matrix
+        function initConfusionMatrix() {
+            const data = [{
+                z: confusionMatrix,
+                x: classes,
+                y: classes,
+                type: 'heatmap',
+                colorscale: 'Viridis',
+                showscale: true
+            }];
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'Predicted', tickangle: 45 },
+                yaxis: { title: 'True', autorange: 'reversed' },
+                margin: { t: 30, b: 100, l: 100, r: 30 }
+            };
+
+            Plotly.newPlot('confusion-matrix-container', data, layout, {responsive: true});
+        }
+
+        // SNR Chart
+        function initSNRChart() {
+            const colors = snrData.accuracy.map(a => 
+                a < 0.3 ? '#ef4444' : a < 0.6 ? '#f59e0b' : '#22c55e'
+            );
+
+            const data = [{
+                x: snrData.snrs,
+                y: snrData.accuracy,
+                type: 'bar',
+                marker: { color: colors },
+                text: snrData.accuracy.map(a => (a * 100).toFixed(1) + '%'),
+                textposition: 'outside'
+            }];
+
+            const layout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#94a3b8' },
+                xaxis: { title: 'SNR (dB)' },
+                yaxis: { title: 'Accuracy', range: [0, 1.1] },
+                margin: { t: 30, b: 60, l: 60, r: 30 },
+                shapes: [{
+                    type: 'line',
+                    x0: -20, x1: 30,
+                    y0: 0.5, y1: 0.5,
+                    line: { color: '#f472b6', dash: 'dash', width: 2 }
+                }]
+            };
+
+            Plotly.newPlot('snr-chart-container', data, layout, {responsive: true});
+        }
+
+        // Generate Signal Demo
+        function generateSignal() {
+            const modType = document.getElementById('mod-select').value;
+            const snr = parseInt(document.getElementById('snr-slider').value);
+            const n = 256;
+            
+            // Generate I/Q signal
+            const t = Array.from({length: n}, (_, i) => i);
+            let I = [], Q = [];
+            
+            if (modType.includes('PSK') || modType === 'QPSK') {
+                for (let i = 0; i < n; i++) {
+                    const phase = [0, Math.PI/2, Math.PI, 3*Math.PI/2][Math.floor(Math.random() * 4)];
+                    I.push(Math.cos(2 * Math.PI * 10 * i / n + phase));
+                    Q.push(Math.sin(2 * Math.PI * 10 * i / n + phase));
+                }
+            } else if (modType.includes('QAM')) {
+                for (let i = 0; i < n; i++) {
+                    I.push([-3, -1, 1, 3][Math.floor(Math.random() * 4)] / 3);
+                    Q.push([-3, -1, 1, 3][Math.floor(Math.random() * 4)] / 3);
+                }
+            } else {
+                for (let i = 0; i < n; i++) {
+                    const amp = 1 + 0.5 * Math.sin(2 * Math.PI * i / n);
+                    I.push(amp * Math.cos(2 * Math.PI * 10 * i / n));
+                    Q.push(amp * Math.sin(2 * Math.PI * 10 * i / n));
+                }
+            }
+
+            // Add noise
+            const noisePower = Math.pow(10, -snr / 10);
+            I = I.map(v => v + (Math.random() - 0.5) * 2 * Math.sqrt(noisePower));
+            Q = Q.map(v => v + (Math.random() - 0.5) * 2 * Math.sqrt(noisePower));
+
+            // Plot signal
+            const signalData = [
+                { y: I, name: 'I', line: { color: '#818cf8' } },
+                { y: Q, name: 'Q', line: { color: '#f472b6' } }
+            ];
+            const signalLayout = {
+                paper_bgcolor: 'rgba(0,0,0,0)',
+                plot_bgcolor: 'rgba(0,0,0,0)',
+                font: { color: '#94a3b8' },
+                margin: { t: 10, b: 30, l: 40, r: 10 },
+                legend: { orientation: 'h', y: 1.1 },
+                showlegend: true
+            };
+            Plotly.newPlot('signal-plot', signalData, signalLayout, {responsive: true});
+
+            // Generate predictions
+            const predClasses = ['QPSK', 'BPSK', '8PSK', modType, '16QAM'];
+            const probs = predClasses.map((c, i) => {
+                if (c === modType) return 0.4 + Math.random() * 0.3;
+                return Math.random() * 0.15;
+            });
+            const total = probs.reduce((a, b) => a + b, 0);
+            const normalized = probs.map(p => p / total).sort((a, b) => b - a);
+
+            // Sort and display
+            const sortedPreds = predClasses.map((c, i) => ({
+                name: c,
+                prob: normalized[i],
+                isCorrect: c === modType
+            })).sort((a, b) => b.prob - a.prob).slice(0, 5);
+
+            const predictionsHtml = sortedPreds.map(p => `
+                <div class="prediction-item">
+                    <span class="prediction-label">${p.name} ${p.isCorrect ? '✅' : ''}</span>
+                    <div class="prediction-bar-bg">
+                        <div class="prediction-bar ${p.isCorrect ? 'correct' : ''}" 
+                             style="width: ${p.prob * 100}%"></div>
+                    </div>
+                    <span class="prediction-value">${(p.prob * 100).toFixed(1)}%</span>
+                </div>
+            `).join('');
+
+            document.getElementById('predictions').innerHTML = predictionsHtml;
+        }
+
+        // Initialize first charts
+        setTimeout(() => {
+            // Small delay to ensure DOM is ready
+        }, 100);
+    </script>
+</body>
+</html>

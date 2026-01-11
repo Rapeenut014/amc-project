@@ -1,0 +1,41 @@
+version: '3.8'
+
+services:
+  # Training service
+  train:
+    build: .
+    container_name: amc-train
+    volumes:
+      - ./archive:/app/archive:ro      # Dataset (read-only)
+      - ./models:/app/models           # Trained models
+      - ./results:/app/results         # Evaluation results
+      - ./logs:/app/logs               # Training logs
+    command: python src/train.py --epochs 50 --model cnn
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  # Dashboard service
+  dashboard:
+    build: .
+    container_name: amc-dashboard
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./models:/app/models:ro        # Trained models (read-only)
+      - ./results:/app/results:ro      # Results (read-only)
+    environment:
+      - STREAMLIT_SERVER_PORT=8501
+    restart: unless-stopped
+
+  # Quick test with demo data
+  demo:
+    build: .
+    container_name: amc-demo
+    volumes:
+      - ./archive:/app/archive
+    command: python scripts/generate_demo_data.py
