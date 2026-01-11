@@ -21,6 +21,9 @@ This project implements an **Automatic Modulation Classification** system using 
 | **ASK** | OOK, 4ASK, 8ASK |
 | **Analog** | AM-SSB-WC, AM-SSB-SC, AM-DSB-WC, AM-DSB-SC, FM, GMSK |
 
+## 📸 Dashboard Preview
+![Monitor](monitor.png)
+
 ## 📁 Project Structure
 
 ```
@@ -220,4 +223,8 @@ training:
 ---
 
 Built with ❤️ using TensorFlow & Streamlit
+
+## 📝 Author
+- **Rapeenut** - Telecommunication Engineering Student @King Mongkut's University of Technology Thonburi
+
 
